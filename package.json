@@ -1,0 +1,20 @@
+{
+  "name": "ollama-scraper",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.7.7",
+    "cheerio": "^1.0.0",
+    "ejs": "^3.1.10",
+    "express": "^4.21.0",
+    "puppeteer": "^23.3.0",
+    "redis": "^4.7.0"
+  }
+}

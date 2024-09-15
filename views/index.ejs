@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <title>Web Scraping Tool</title>
+</head>
+<body>
+  <div class="container">
+    <div class="row mt-5">
+      <div class="col-md-6">
+        <h3>Scraping Configuration</h3>
+        <form id="scrape-form" action="/scrape" method="POST">
+          <div class="mb-3">
+            <label for="model" class="form-label">Model</label>
+            <select class="form-control" name="model" id="model-select" required>
+              <option value="" disabled selected>Select a model...</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="url" class="form-label">URL to Scrape</label>
+            <input type="text" class="form-control" name="url" id="url-input" placeholder="Enter URL" required>
+          </div>
+          <div class="mb-3">
+            <label for="fields" class="form-label">Fields to Extract</label>
+            <input type="text" class="form-control" id="fields-input" placeholder="Enter field and press Enter">
+            <div id="fields-tags" class="mt-2">
+              <% fields.forEach(field => { %>
+                <span class="badge bg-primary mx-1">
+                  <%= field %>
+                  <a href="#" class="text-white ms-1 remove-field" data-field="<%= field %>">x</a>
+                </span>
+              <% }) %>
+            </div>
+            <input type="hidden" name="fields" id="fields" value="<%= fields.join(',') %>">
+          </div>
+          <button type="submit" class="btn btn-primary">Scrape</button>
+        </form>
+      </div>
+
+      <div class="col-md-6">
+        <h3>Scraping Results</h3>
+        <p>Model: <%= model || 'llama3.1' %></p>
+        <% if (Object.keys(data).length > 0) { %>
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <% fields.forEach(field => { %>
+                  <th><%= field %></th>
+                <% }) %>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (data && fields.length > 0) { %>
+                <% for (let i = 0; i < (data[fields[0]] || []).length; i++) { %>
+                  <tr>
+                    <% fields.forEach(field => { %>
+                      <td><%= (data[field] && data[field][i]) || 'No data available' %></td>
+                    <% }) %>
+                  </tr>
+                <% } %>
+              <% } else { %>
+                <tr>
+                  <td colspan="<%= fields.length %>">No data available</td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
+          
+          <form action="/download" method="GET">
+            <input type="hidden" name="csvData" value="<%= JSON.stringify(data) %>">
+            <button type="submit" class="btn btn-success">Download as CSV</button>
+          </form>
+          <form action="/download-json" method="GET">
+            <input type="hidden" name="jsonData" value="<%= JSON.stringify(data) %>">
+            <button type="submit" class="btn btn-secondary">Download as JSON</button>
+          </form>
+        <% } else { %>
+          <p>No data available. Please perform a scrape to see results.</p>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress Modal -->
+  <div class="modal fade" id="progressModal" tabindex="-1" aria-labelledby="progressModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="progressModalLabel">Processing...</h5>
+        </div>
+        <div class="modal-body">
+          <p>Please wait while the scraping and data processing are in progress.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Fetch available models from the server and populate the dropdown
+    fetch('/models')
+      .then(response => response.json())
+      .then(data => {
+        const modelSelect = document.getElementById('model-select');
+        data.models.forEach(model => {
+          const option = document.createElement('option');
+          option.value = model;
+          option.textContent = model;
+          modelSelect.appendChild(option);
+        });
+      })
+      .catch(error => console.error('Error fetching models:', error));
+
+    // Handle adding fields to be extracted
+    document.getElementById('fields-input').addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const field = event.target.value.trim();
+        if (field) {
+          const tagsContainer = document.getElementById('fields-tags');
+          const hiddenFields = document.getElementById('fields');
+
+          tagsContainer.innerHTML += `
+            <span class="badge bg-primary mx-1">
+              ${field}
+              <a href="#" class="text-white ms-1 remove-field" data-field="${field}">x</a>
+            </span>
+          `;
+
+          hiddenFields.value += (hiddenFields.value ? ',' : '') + field;
+          event.target.value = '';
+        }
+      }
+    });
+
+    // Remove field handler
+    document.addEventListener('click', function (event) {
+      if (event.target.classList.contains('remove-field')) {
+        event.preventDefault();
+        const field = event.target.getAttribute('data-field');
+        const hiddenFields = document.getElementById('fields');
+        hiddenFields.value = hiddenFields.value.split(',').filter(f => f !== field).join(',');
+
+        event.target.parentElement.remove();
+      }
+    });
+
+    // Show progress modal on form submit
+    document.getElementById('scrape-form').addEventListener('submit', function (event) {
+      const url = document.getElementById('url-input').value;
+      if (!url) {
+        alert('Please enter a URL.');
+        event.preventDefault();
+        return;
+      }
+      const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
+      progressModal.show();
+    });
+  </script>
+</body>
+</html>
