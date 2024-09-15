@@ -47,23 +47,23 @@
           <table class="table table-striped">
             <thead>
               <tr>
-                <% Object.keys(data).forEach(field => { %>
+                <% fields.forEach(field => { %>
                   <th><%= field %></th>
                 <% }) %>
               </tr>
             </thead>
             <tbody>
-              <% const maxRows = Math.max(...Object.values(data).map(arr => arr.length)); %>
-              <% for (let i = 0; i < maxRows; i++) { %>
+              <% const numRows = Math.max(...fields.map(field => data[field]?.length || 0)); %>
+              <% for (let i = 0; i < numRows; i++) { %>
                 <tr>
-                  <% Object.keys(data).forEach(field => { %>
-                    <td><%= data[field][i] || 'No data available' %></td>
+                  <% fields.forEach(field => { %>
+                    <td><%= (data[field] && data[field][i]) || 'No data available' %></td>
                   <% }) %>
                 </tr>
               <% } %>
             </tbody>
           </table>
-
+          
           <form action="/download-csv" method="GET">
             <input type="hidden" name="csvData" value="<%= JSON.stringify(data) %>">
             <button type="submit" class="btn btn-success">Download as CSV</button>

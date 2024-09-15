@@ -116,7 +116,7 @@ async function findFlaskPort() {
 
 // Render the main page
 app.get('/', (req, res) => {
-  res.render('index', { fields: [], data: {}, model: 'llama3.1' });
+  res.render('index', { fields: [], data: {}, model: 'llama3.1' }); // Ensure default model is provided
 });
 
 // Handle scraping request when the user submits the form
@@ -158,35 +158,32 @@ app.post('/scrape', async (req, res) => {
     // Retrieve the formatted data from Redis
     const formattedData = await getFormattedDataFromRedis(formattedDataKey);
 
-    // Send extracted data to the Flask API
-    const response = await axios.post(
-      `http://localhost:${flaskPort}/ollama`,
-      {
-        message: formattedData,
-        model,
-      },
-      {
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    // Log the response data to the console
+    console.log('Extracted Data:', formattedData);
 
-    console.log('Response from Flask API:', response.data);
-
-    const modelUsed = response.data.model || model;
-
-    let cleanedResponse = response.data.response.replace(/None/g, 'null').trim();
-
-    try {
-      const parsedData = JSON.parse(cleanedResponse);
-
-      res.render('index', { fields: fieldsArray, data: parsedData, model: modelUsed });
-    } catch (error) {
-      console.error('Error parsing JSON response:', error.message);
-      res.status(500).send('Failed to parse the response from Ollama.');
-    }
+    // Render the results on the index page
+    res.render('index', { fields: Object.keys(formattedData), data: formattedData, model });
   } catch (error) {
     console.error('Error during scraping:', error);
     res.status(500).send('An error occurred during scraping.');
+  }
+});
+
+// Endpoint to retrieve and view formatted data from Redis
+app.get('/view-data', async (req, res) => {
+  const { key } = req.query;
+
+  try {
+    const data = await getFormattedDataFromRedis(key);
+
+    if (!data) {
+      return res.status(400).send('No data available for the provided key.');
+    }
+
+    res.render('index', { fields: Object.keys(data), data, model: 'llama3.1' }); // Pass model and data to the template
+  } catch (error) {
+    console.error('Error retrieving data from Redis:', error);
+    res.status(500).send('Failed to retrieve data.');
   }
 });
 
@@ -200,8 +197,10 @@ app.get('/download-csv', (req, res) => {
 
   const filePath = path.join(__dirname, 'results.csv');
 
+  // Save CSV data to file before sending
   fs.writeFileSync(filePath, csvData);
 
+  // Send the CSV file for download
   res.download(filePath, 'results.csv', (err) => {
     if (err) {
       console.error('Error downloading the CSV file:', err);
