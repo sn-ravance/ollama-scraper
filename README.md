@@ -14,6 +14,16 @@ The implementation includes:
 - Python 3.12
 - Redis (local)
 
+### Node.js dependencies
+```
+npm install puppeteer express body-parser axios ejs
+```
+
+### Python dependencies
+```
+pip install -r requirements.txt
+```
+
 ## MacOS
 
 ### 1. Start Ollama as an API Endpoint
