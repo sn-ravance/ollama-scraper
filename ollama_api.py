@@ -26,17 +26,23 @@ def is_model_installed(model_name):
         print(f"Error checking if model {model_name} is installed:", str(e))
         return False
 
-def download_model(model_name):
-    """Download the specified model using Ollama."""
+def download_model(model_name, retries=3):
+    """Attempt to download the specified model with retries."""
     try:
-        print(f"Downloading model: {model_name}...")
-        result = subprocess.run(['ollama', 'download', model_name], capture_output=True, text=True)
-        if result.returncode == 0:
-            print(f"Model {model_name} downloaded successfully.")
-            return True
-        else:
-            print(f"Error downloading model {model_name}: {result.stderr}")
-            return False
+        print(f"Attempting to download model: {model_name}...")
+        for attempt in range(retries):
+            result = subprocess.run(['ollama', 'download', model_name], capture_output=True, text=True)
+            if result.returncode == 0:
+                print(f"Model {model_name} downloaded successfully.")
+                return True
+            else:
+                print(f"Error downloading model {model_name} on attempt {attempt + 1}: {result.stderr}")
+                # Check specific error messages and handle them if needed
+                if "Network error" in result.stderr or "Timeout" in result.stderr:
+                    print("Retrying download due to network issue...")
+                    time.sleep(5)  # Wait before retrying
+        print(f"Failed to download model {model_name} after {retries} attempts.")
+        return False
     except Exception as e:
         print(f"Error during model download {model_name}:", str(e))
         return False
@@ -67,9 +73,6 @@ def post_ollama():
     if not is_model_installed(selected_model):
         if not download_model(selected_model):
             return jsonify({'error': f'Failed to download the model: {selected_model}'})
-
-        # Give some time to ensure the model is fully downloaded before continuing
-        time.sleep(5)
 
     # Prompt for structured data extraction with the selected model
     prompt = (
