@@ -187,42 +187,87 @@ app.get('/view-data', async (req, res) => {
   }
 });
 
-// Endpoint to download extracted data as a CSV file
-app.get('/download-csv', (req, res) => {
-  const csvData = req.query.csvData;
+// Function to format data into CSV
+function formatDataToCSV(data) {
+  const fields = Object.keys(data); // Get headers from data keys
+  const rows = [];
+  const numRows = Math.max(...fields.map(field => data[field].length)); // Determine max number of rows
 
-  if (!csvData) {
-    return res.status(400).send('No CSV data available for download.');
+  for (let i = 0; i < numRows; i++) {
+    const row = {};
+    fields.forEach(field => {
+      row[field] = data[field][i] || ''; // Populate each row with data or empty string if undefined
+    });
+    rows.push(row);
   }
 
-  const filePath = path.join(__dirname, 'results.csv');
+  return parse(rows, { fields }); // Convert rows to CSV using headers
+}
 
-  // Save CSV data to file before sending
-  fs.writeFileSync(filePath, csvData);
+// Endpoint to download extracted data as a CSV file
+app.get('/download-csv', async (req, res) => {
+  const key = req.query.key;
 
-  // Send the CSV file for download
-  res.download(filePath, 'results.csv', (err) => {
-    if (err) {
-      console.error('Error downloading the CSV file:', err);
-      if (!res.headersSent) {
-        res.status(500).send('Failed to download CSV.');
-      }
+  try {
+    // Fetch the formatted data from Redis
+    const data = await getFormattedDataFromRedis(key);
+
+    if (!data) {
+      return res.status(400).send('No CSV data available for download.');
     }
-  });
+
+    // Format the data as CSV
+    const csv = formatDataToCSV(data);
+    const filePath = path.join(__dirname, 'results.csv');
+
+    // Save CSV data to file before sending
+    fs.writeFileSync(filePath, csv);
+
+    // Send the CSV file for download
+    res.download(filePath, 'results.csv', (err) => {
+      if (err) {
+        console.error('Error downloading the CSV file:', err);
+        if (!res.headersSent) {
+          res.status(500).send('Failed to download CSV.');
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error downloading CSV:', error);
+    if (!res.headersSent) {
+      res.status(500).send('Failed to download CSV.');
+    }
+  }
 });
 
 // Endpoint to download extracted data as a JSON file
 app.get('/download-json', async (req, res) => {
-  const key = req.query.key;
+  const key = req.query.key; // Key used to retrieve data from Redis
 
   try {
+    // Retrieve the formatted data from Redis
     const data = await getFormattedDataFromRedis(key);
 
     if (!data) {
       return res.status(400).send('No JSON data available for download.');
     }
 
-    res.json(data);
+    // Convert JSON data to a string format
+    const jsonData = JSON.stringify(data, null, 2); // Pretty format the JSON for readability
+    const filePath = path.join(__dirname, 'results.json');
+
+    // Save JSON data to a file before sending
+    fs.writeFileSync(filePath, jsonData);
+
+    // Send the JSON file for download
+    res.download(filePath, 'results.json', (err) => {
+      if (err) {
+        console.error('Error downloading the JSON file:', err);
+        if (!res.headersSent) {
+          res.status(500).send('Failed to download JSON.');
+        }
+      }
+    });
   } catch (error) {
     console.error('Error downloading JSON:', error);
     if (!res.headersSent) {
