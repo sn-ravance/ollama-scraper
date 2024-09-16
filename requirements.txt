@@ -1,0 +1,17 @@
+# Flask for the API server
+Flask==2.2.5
+
+# Redis for managing the data storage
+redis==4.6.0
+
+# Puppeteer for web scraping (via a Node.js package, referenced in setup; assumed needed for scraping through Node)
+# You may need to install Puppeteer using npm: npm install puppeteer
+
+# Node packages via package.json:
+# express, body-parser, axios, fs, path, ejs
+# install these via npm: npm install express body-parser axios ejs
+
+# Python subprocess used natively
+# socket used natively
+
+# Make sure you have Node.js installed for running Node packages
