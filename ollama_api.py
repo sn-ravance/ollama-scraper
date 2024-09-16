@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import subprocess
 import socket
+import time
 
 app = Flask(__name__)
 
@@ -14,6 +15,31 @@ def find_available_port(start=11400, end=11499):
 
 # Find an available port
 port = find_available_port()
+
+def is_model_installed(model_name):
+    """Check if the specified model is installed in Ollama."""
+    try:
+        result = subprocess.run(['ollama', 'list'], capture_output=True, text=True)
+        models = result.stdout.splitlines()
+        return any(model_name in model for model in models)
+    except Exception as e:
+        print(f"Error checking if model {model_name} is installed:", str(e))
+        return False
+
+def download_model(model_name):
+    """Download the specified model using Ollama."""
+    try:
+        print(f"Downloading model: {model_name}...")
+        result = subprocess.run(['ollama', 'download', model_name], capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"Model {model_name} downloaded successfully.")
+            return True
+        else:
+            print(f"Error downloading model {model_name}: {result.stderr}")
+            return False
+    except Exception as e:
+        print(f"Error during model download {model_name}:", str(e))
+        return False
 
 @app.route('/models', methods=['GET'])
 def get_models():
@@ -36,6 +62,14 @@ def post_ollama():
     # Check if HTML content is provided
     if not html_content:
         return jsonify({'response': 'No HTML content provided to extract fields from.'})
+
+    # Check if the model is installed, and download if not
+    if not is_model_installed(selected_model):
+        if not download_model(selected_model):
+            return jsonify({'error': f'Failed to download the model: {selected_model}'})
+
+        # Give some time to ensure the model is fully downloaded before continuing
+        time.sleep(5)
 
     # Prompt for structured data extraction with the selected model
     prompt = (
